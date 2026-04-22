@@ -1,0 +1,19 @@
+ write "<Variables>";                                                                                              
+string s;                                                                                                        
+s = "Abcd";                                                                                                       
+write "s: ", s;                                                                                                                                                                                                                     int n;
+  n = -500;
+  write "n: ", n;
+
+  write "<Expressions>";
+  write "2+3*5: ", 2+3*5;
+  write "17/3: ", 17/3;
+
+  int b, a;
+ b = 3;
+a = 1;
+    if (a > b) {
+      write "b je mensi";
+  } else {
+      write "b je vetsi";
+  }

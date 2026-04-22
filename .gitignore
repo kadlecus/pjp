@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.interp
+*.tokens
+PLC_Lab7_exprLexer.py
+PLC_Lab7_exprParser.py
+PLC_Lab7_exprVisitor.py
+PLC_Lab7_exprListener.py
+out.txt
