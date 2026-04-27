@@ -17,3 +17,7 @@ a = 1;
   } else {
       write "b je vetsi";
   }
+int i;
+i = 5;
+
+write "i: ", i;

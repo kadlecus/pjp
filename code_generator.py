@@ -150,6 +150,7 @@ class CodeGenerator(ParseTreeVisitor):
         self.emit(f'jmp {l1}')
         self.emit(f'label {l2}')
 
+
     # ── Expressions ──────────────────────────────────────────────────────────
 
     def visitIntLit(self, ctx):

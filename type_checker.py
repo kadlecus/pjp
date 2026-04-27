@@ -66,6 +66,8 @@ class TypeChecker(ParseTreeVisitor):
         for expr in ctx.expr():
             self.visit(expr)
 
+    
+
     def visitBlockStat(self, ctx):
         for stat in ctx.stat():
             self.visit(stat)
@@ -82,6 +84,7 @@ class TypeChecker(ParseTreeVisitor):
         if cond_type != 'bool':
             self.error(ctx, f"'while' condition must be bool, got '{cond_type}'")
         self.visit(ctx.stat())
+   
 
     # ── Expressions (return type string) ─────────────────────────────────────
 

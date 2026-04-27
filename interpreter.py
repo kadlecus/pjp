@@ -8,6 +8,7 @@ class Interpreter:
         self.instructions = []
         self.labels = {}  # label number -> instruction index
         self.ip = 0
+        
 
     def load(self, code_text):
         for line in code_text.strip().splitlines():
@@ -150,7 +151,6 @@ class Interpreter:
                 self.stack.append(line.strip() == 'true')
             elif T == 'S':
                 self.stack.append(line)
-
         else:
             print(f"Unknown instruction: {op}", file=sys.stderr)
             sys.exit(1)
