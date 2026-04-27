@@ -8,7 +8,8 @@ class Interpreter:
         self.instructions = []
         self.labels = {}  # label number -> instruction index
         self.ip = 0
-        
+        self.files = {}
+        self.file_counter = 0
 
     def load(self, code_text):
         for line in code_text.strip().splitlines():
@@ -57,6 +58,8 @@ class Interpreter:
                 self.stack.append(val == 'true')
             elif T == 'S':
                 self.stack.append(self._parse_string_literal(val))
+            elif T == 'H':
+                self.stack.append(int(val))
 
         elif op == 'pop':
             self.stack.pop()
@@ -151,6 +154,20 @@ class Interpreter:
                 self.stack.append(line.strip() == 'true')
             elif T == 'S':
                 self.stack.append(line)
+        elif op == 'open':
+            filename = self.stack.pop()
+            self.file_counter += 1
+            self.files[self.file_counter] = open(filename, 'w+')
+            self.stack.append(self.file_counter)
+        elif op == 'fwrite':
+            data = self.stack.pop()
+            handle = self.stack.pop()
+            self.files[handle].write(str(data))
+        elif op == 'fwrite2':
+            data = self.stack.pop()
+            handle = self.stack.pop() 
+            self.files[handle].write(str(data))
+            self.stack.append(handle)
         else:
             print(f"Unknown instruction: {op}", file=sys.stderr)
             sys.exit(1)

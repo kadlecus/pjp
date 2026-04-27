@@ -24,6 +24,7 @@ class TypeChecker(ParseTreeVisitor):
         if tok == parser.FLOAT_TYPE:  return 'float'
         if tok == parser.BOOL_TYPE:   return 'bool'
         if tok == parser.STRING_TYPE: return 'string'
+        if tok == parser.FILE_TYPE:   return 'file'
 
     def _compatible(self, t1, t2):
         """Returns the result type if t1 op t2 is valid (with int->float cast), else None."""
@@ -85,8 +86,39 @@ class TypeChecker(ParseTreeVisitor):
             self.error(ctx, f"'while' condition must be bool, got '{cond_type}'")
         self.visit(ctx.stat())
    
+    def visitFopenStat(self, ctx):
+        file_id = ctx.ID().getText()
+        if file_id not in self.symbols:
+            self.error(ctx, f"variable '{file_id}' not declared")
+            return
+        file = self.symbols[file_id]
+
+        if file != 'file':
+            self.error(ctx, f"'fopen' target must be file variable, got '{file}'")
+
+        filename = self.visit(ctx.filename)
+        if filename != 'string':
+            self.error(ctx, f"'fopen' filename must be string, got '{filename}'")
+    
+  
+
+
+    def visitFwriteStat(self, ctx):
+        handle = self.visit(ctx.handle)
+        if handle != 'file':
+            self.error(ctx, f"'fwrite' handle must be file, got '{handle}'")
+        
+        for expr in ctx.expr():
+            self.visit(expr)
 
     # ── Expressions (return type string) ─────────────────────────────────────
+
+    def visitWriteFile(self, ctx):
+        handle = self.visit(ctx.expr(0))
+        if handle != 'file':
+            self.error(ctx, f"'write' target time to write must be file, got '{handle}'")
+        self.visit(ctx.expr(1))
+        return 'file'
 
     def visitIntLit(self, ctx):
         return 'int'

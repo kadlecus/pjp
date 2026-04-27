@@ -27,12 +27,13 @@ class CodeGenerator(ParseTreeVisitor):
         if tok == p.FLOAT_TYPE:  return 'float'
         if tok == p.BOOL_TYPE:   return 'bool'
         if tok == p.STRING_TYPE: return 'string'
+        if tok == p.FILE_TYPE:   return 'file'
 
     def _type_letter(self, t):
-        return {'int': 'I', 'float': 'F', 'bool': 'B', 'string': 'S'}[t]
+        return {'int': 'I', 'float': 'F', 'bool': 'B', 'string': 'S', 'file': 'H'}[t]
 
     def _default_value(self, t):
-        return {'int': '0', 'float': '0.0', 'bool': 'false', 'string': '""'}[t]
+        return {'int': '0', 'float': '0.0', 'bool': 'false', 'string': '""', 'file': '-1'}[t]
 
     def _type_of(self, ctx):
         """Derive the type of an already type-checked expression."""
@@ -150,8 +151,26 @@ class CodeGenerator(ParseTreeVisitor):
         self.emit(f'jmp {l1}')
         self.emit(f'label {l2}')
 
+    def visitFopenStat(self, ctx):
+    
+        self.visit(ctx.filename)
+        self.emit(f'open')
+        self.emit(f'save {ctx.ID().getText()}')
+
+    def visitFwriteStat(self, ctx):
+        for expr in ctx.expr():
+            self.visit(ctx.handle)
+            self.visit(expr)
+            self.emit(f'fwrite') 
+
+    
 
     # ── Expressions ──────────────────────────────────────────────────────────
+
+    def visitWriteFile(self, ctx):
+        self.visit(ctx.expr(0))
+        self.visit(ctx.expr(1))
+        self.emit(f'fwrite2')
 
     def visitIntLit(self, ctx):
         self.emit(f'push I {ctx.INT_LIT().getText()}')

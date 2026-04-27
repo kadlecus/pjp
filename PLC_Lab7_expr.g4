@@ -9,7 +9,9 @@ stat
     | type ID (',' ID)* ';'                     # DeclStat
     | READ ID (',' ID)* ';'                     # ReadStat
     | WRITE expr (',' expr)* ';'                # WriteStat
+    | FWRITE handle=expr (',' expr)+ ';'        # FwriteStat
     | '{' stat* '}'                             # BlockStat
+    | FOPEN ID filename=expr ';'                #FopenStat
     | IF '(' expr ')' stat (ELSE stat)?         # IfStat
     | WHILE '(' expr ')' stat                   # WhileStat
     | expr ';'                                  # ExprStat
@@ -20,6 +22,7 @@ type
     | FLOAT_TYPE
     | BOOL_TYPE
     | STRING_TYPE
+    | FILE_TYPE
     ;
 
 // Operators listed highest → lowest precedence (ANTLR4 convention)
@@ -32,6 +35,7 @@ expr
     | expr op=('=='|'!=') expr                  # EqOp
     | expr '&&' expr                            # AndOp
     | expr '||' expr                            # OrOp
+    | expr '<<' expr                            # WriteFile
     | <assoc=right> ID '=' expr                 # Assign
     | '(' expr ')'                              # Parens
     | FLOAT_LIT                                 # FloatLit
@@ -50,12 +54,16 @@ ELSE        : 'else';
 WHILE       : 'while';
 READ        : 'read';
 WRITE       : 'write';
+FWRITE      : 'fwrite';
+FOPEN       : 'fopen';
 TRUE        : 'true';
 FALSE       : 'false';
 INT_TYPE    : 'int';
 FLOAT_TYPE  : 'float';
 BOOL_TYPE   : 'bool';
+FILE_TYPE   : 'file';
 STRING_TYPE : 'string';
+LSHIFT      : '<<';
 
 // Literals — FLOAT_LIT before INT_LIT so "3.14" doesn't tokenize as "3" + ".14"
 FLOAT_LIT   : [0-9]+ '.' [0-9]* | '.' [0-9]+;
