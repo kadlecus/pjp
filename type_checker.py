@@ -6,6 +6,7 @@ class TypeChecker(ParseTreeVisitor):
     def __init__(self):
         self.symbols = {}   # name -> type ('int','float','bool','string')
         self.errors = []
+        self.loop_depth = 0 # to track if we're inside a loop for 'break'/'continue' checks
 
     def error(self, ctx, msg):
         line = ctx.start.line
@@ -24,6 +25,7 @@ class TypeChecker(ParseTreeVisitor):
         if tok == parser.FLOAT_TYPE:  return 'float'
         if tok == parser.BOOL_TYPE:   return 'bool'
         if tok == parser.STRING_TYPE: return 'string'
+        if tok == parser.FILE_TYPE: return 'file'
 
     def _compatible(self, t1, t2):
         """Returns the result type if t1 op t2 is valid (with int->float cast), else None."""
@@ -81,7 +83,58 @@ class TypeChecker(ParseTreeVisitor):
         cond_type = self.visit(ctx.expr())
         if cond_type != 'bool':
             self.error(ctx, f"'while' condition must be bool, got '{cond_type}'")
+        self.loop_depth += 1
         self.visit(ctx.stat())
+        self.loop_depth -= 1
+
+    def visitForStat(self, ctx):
+        init = self.visit(ctx.init)
+        condition = self.visit(ctx.condition)
+
+        if condition != 'bool':
+            self.error(ctx, f"'for' condition must be bool, got '{condition}'")
+        self.loop_depth += 1
+        self.visit(ctx.stat())
+        self.loop_depth -= 1
+        step = self.visit(ctx.step)
+
+    def visitFcloseStat(self, ctx):
+        handle = self.visit(ctx.handle)
+        if handle != 'file':
+            self.error(ctx, f"'fclose' requires file argument, got '{handle}'")
+
+    def visitFwriteStat(self, ctx): 
+        handle = self.visit(ctx.handle)
+        if handle != 'file':
+            self.error(ctx, f"'fwrite' requires file argument, got '{handle}'")
+        data = self.visit(ctx.data)
+        if data not in ('int', 'float', 'bool', 'string'):
+            self.error(ctx, f"'fwrite' data must be int or float or bool or string got '{data}'")
+    
+    def visitSwitchStat(self, ctx):
+        condition = self.visit(ctx.condition)
+        if condition not in ('int', 'float', 'string'):
+            self.error(ctx, f"'switch' condition must be int or float or string got '{condition}'")
+        
+        for case in ctx.case_item():
+            case_type = self.visit(case.expr())
+            if case_type != condition:
+                self.error(ctx, f"'case' type must match 'switch' condition type '{condition}' got '{case_type}'")
+            for stat in case.stat():
+                self.visit(stat)
+        
+        if ctx.default_item():
+            for stat in ctx.default_item().stat():
+                self.visit(stat)
+    
+    def visitBreakStat(self, ctx):
+        if self.loop_depth == 0:
+            self.error(ctx, "'break' not inside a loop")
+    
+    def visitContinueStat(self, ctx):
+        if self.loop_depth == 0:
+            self.error(ctx, "'continue' not inside a loop")
+
 
     # ── Expressions (return type string) ─────────────────────────────────────
 
@@ -204,3 +257,21 @@ class TypeChecker(ParseTreeVisitor):
             return 'float'
         self.error(ctx, f"cannot assign '{val_type}' to variable '{name}' of type '{var_type}'")
         return var_type
+    
+    def visitFopenExpr(self, ctx):
+        filename = self.visit(ctx.filename)
+        fmode = self.visit(ctx.fmode)
+
+        if filename != 'string':
+            self.error(ctx, f"filename must be string, got '{filename}'")
+
+        if fmode != 'string':
+            self.error(ctx, f"file mode must be string, got '{fmode}'")
+        return 'file'
+    
+    def visitFreadExpr(self, ctx):
+        handle = self.visit(ctx.handle)
+        if handle != 'file':
+            self.error(ctx, f"'fread' requires file argument, got '{handle}'")
+
+        return 'string' # for simplicity we treat all fread results as strings, even if they represent numbers

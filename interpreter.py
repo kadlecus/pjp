@@ -7,6 +7,9 @@ class Interpreter:
         self.variables = {}
         self.instructions = []
         self.labels = {}  # label number -> instruction index
+        self.files = {} # file handle -> file object
+
+        self.files_counter = 0 # to generate unique file handles
         self.ip = 0
 
     def load(self, code_text):
@@ -56,6 +59,8 @@ class Interpreter:
                 self.stack.append(val == 'true')
             elif T == 'S':
                 self.stack.append(self._parse_string_literal(val))
+            elif T == 'H':
+                self.stack.append(int(val))  # file handle as integer
 
         elif op == 'pop':
             self.stack.pop()
@@ -150,7 +155,46 @@ class Interpreter:
                 self.stack.append(line.strip() == 'true')
             elif T == 'S':
                 self.stack.append(line)
+        elif op == 'fopen':
+            fmode = self.stack.pop()
+            filename = self.stack.pop()
+            try:
+                handle = open(filename, fmode)
+                self.files_counter += 1
+                counter = self.files_counter
+                self.files[counter] = handle
+                self.stack.append(counter)   
+            except Exception as e:
+                print(f"Error opening file '{filename}' with mode '{fmode}': {e}", file=sys.stderr)
+                self.stack.append(-1)
+               
+        elif op == 'fclose':
+            handle_id = self.stack.pop()
+            try:
+                self.files[handle_id].close()
+                self.files.pop(handle_id)
+            except Exception as e:
+                print(f"Error closing file: {e}", file=sys.stderr)
+                self.stack.append(-1) # indicate error with -1 on stack
 
+        elif op == 'fwrite':
+            data = self.stack.pop()
+            handle_id = self.stack.pop()
+            try:
+                self.files[handle_id].write(str(data))
+                self.files[handle_id].flush() # ensure data is written to disk
+            except Exception as e:
+                print (f"Error writing to file '{handle_id}': {e}", file= sys.stderr)
+
+        elif op == 'fread':
+            handle_id = self.stack.pop()
+            try: 
+                line = self.files[handle_id].readline()
+                self.stack.append(line.strip('\n'))
+            
+            except Exception as e:
+                print(f"Error reading from file '{handle_id}': {e}", file=sys.stderr)
+                self.stack.append('') # on error, push empty string
         else:
             print(f"Unknown instruction: {op}", file=sys.stderr)
             sys.exit(1)

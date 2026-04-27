@@ -7,6 +7,8 @@ class CodeGenerator(ParseTreeVisitor):
         self.code = []
         self._label_count = 0
         self.symbols = {}  # name -> type
+        self.continue_labels = [] # stack of labels to jump to for 'continue'
+        self.break_labels = []    # stack of labels to jump to for 'break'
 
     def new_label(self):
         self._label_count += 1
@@ -27,12 +29,13 @@ class CodeGenerator(ParseTreeVisitor):
         if tok == p.FLOAT_TYPE:  return 'float'
         if tok == p.BOOL_TYPE:   return 'bool'
         if tok == p.STRING_TYPE: return 'string'
+        if tok == p.FILE_TYPE: return 'file'
 
     def _type_letter(self, t):
-        return {'int': 'I', 'float': 'F', 'bool': 'B', 'string': 'S'}[t]
+        return {'int': 'I', 'float': 'F', 'bool': 'B', 'string': 'S', 'file': 'H'}[t]
 
     def _default_value(self, t):
-        return {'int': '0', 'float': '0.0', 'bool': 'false', 'string': '""'}[t]
+        return {'int': '0', 'float': '0.0', 'bool': 'false', 'string': '""', 'file': '-1'}[t]
 
     def _type_of(self, ctx):
         """Derive the type of an already type-checked expression."""
@@ -57,6 +60,8 @@ class CodeGenerator(ParseTreeVisitor):
         if isinstance(ctx, p.AddSubConcatContext):
             if ctx.op.text == '.': return 'string'
             return self._numeric_result(ctx.expr(0), ctx.expr(1))
+        if isinstance(ctx, p.FopenExprContext): return 'file'
+        if isinstance(ctx, p.FreadExprContext): return 'string'
         return None
 
     def _numeric_result(self, e1, e2):
@@ -146,11 +151,86 @@ class CodeGenerator(ParseTreeVisitor):
         self.emit(f'label {l1}')
         self.visit(ctx.expr())
         self.emit(f'fjmp {l2}')
+        self.continue_labels.append(l1)
+        self.break_labels.append(l2)
         self.visit(ctx.stat())
+        self.break_labels.pop()
+        self.continue_labels.pop()
+        self.emit(f'jmp {l1}')
+        self.emit(f'label {l2}')
+    
+
+    def visitForStat(self, ctx):
+        l1 = self.new_label()
+        l2 = self.new_label()
+        l_step = self.new_label()
+
+        self.visit(ctx.init)
+        self.emit('pop')
+
+        self.emit(f'label {l1}')
+
+        self.visit(ctx.condition)
+        self.emit(f'fjmp {l2}')
+
+        self.continue_labels.append(l_step)
+        self.break_labels.append(l2)
+
+        self.visit(ctx.stat())
+
+        self.break_labels.pop()
+        self.continue_labels.pop()
+
+        self.emit(f'label {l_step}')
+        self.visit(ctx.step)
+        self.emit('pop') 
+
         self.emit(f'jmp {l1}')
         self.emit(f'label {l2}')
 
-    # ── Expressions ──────────────────────────────────────────────────────────
+    def visitFcloseStat(self, ctx):
+        self.visit(ctx.handle)
+        self.emit('fclose')
+
+    def visitFwriteStat(self, ctx):
+        self.visit(ctx.handle)
+        self.visit(ctx.data)
+        self.emit('fwrite')
+
+    def visitSwitchStat(self, ctx):
+        self.visit(ctx.condition)
+        tmp = "$switch_tmp"
+        self.emit(f'save {tmp}')
+        
+        end_label = self.new_label()
+
+        for case in ctx.case_item():
+            next_label = self.new_label()
+            self.emit(f'load {tmp}')
+            self.visit(case.expr())
+            t = self._type_letter(self._type_of(ctx.condition))
+            self.emit(f'eq {t}')
+            self.emit(f'fjmp {next_label}')  
+
+            for stat in case.stat():
+                self.visit(stat)
+            
+            self.emit(f'jmp {end_label}')
+            self.emit(f'label {next_label}')
+
+        if ctx.default_item():
+            for stat in ctx.default_item().stat():
+                self.visit(stat)
+
+        self.emit(f'label {end_label}')
+
+    def visitBreakStat(self, ctx):
+        self.emit(f'jmp {self.break_labels[-1]}')
+
+    def visitContinueStat(self, ctx):
+        self.emit(f'jmp {self.continue_labels[-1]}')
+
+    # ── Expressions ────────────────────────────────────────────────────────── 
 
     def visitIntLit(self, ctx):
         self.emit(f'push I {ctx.INT_LIT().getText()}')
@@ -233,3 +313,12 @@ class CodeGenerator(ParseTreeVisitor):
         self._visit_and_cast(ctx.expr(), var_type)
         self.emit(f'save {name}')
         self.emit(f'load {name}')
+    
+    def visitFopenExpr(self,ctx):
+        self.visit(ctx.filename)
+        self.visit(ctx.fmode)
+        self.emit('fopen')
+
+    def visitFreadExpr(self, ctx):
+        self.visit(ctx.handle)
+        self.emit('fread')
