@@ -160,8 +160,7 @@ class CodeGenerator(ParseTreeVisitor):
         elem_type = self._type_str(ctx.type_())
         size = int(ctx.INT_LIT().getText())
         self.symbols[name] = ('array', elem_type)
-        self.emit(f'push I {size}')
-        self.emit('create')
+        self.emit(f'createarray {size}')
         self.emit(f'save {name}')
 
     def visitFopenStat(self, ctx):
@@ -182,16 +181,14 @@ class CodeGenerator(ParseTreeVisitor):
 
     def visitArrayAcc(self, ctx):
         name = ctx.ID().getText()
-        self.emit(f'load {name}')
         self.visit(ctx.expr())
-        self.emit('aload')
+        self.emit(f'arrayload {name}')
 
     def visitArrayAss(self, ctx):
         name = ctx.ID().getText()
-        self.emit(f'load {name}')
         self.visit(ctx.expr(0))
         self.visit(ctx.expr(1))
-        self.emit('asave')
+        self.emit(f'arraysave {name}')
 
     def visitWriteFile(self, ctx):
         self.visit(ctx.expr(0))

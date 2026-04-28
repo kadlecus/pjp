@@ -154,20 +154,18 @@ class Interpreter:
                 self.stack.append(line.strip() == 'true')
             elif T == 'S':
                 self.stack.append(line)
-        elif op == 'create':
-            size = self.stack.pop()
+        elif op == 'createarray':
+            size = int(parts[1])
             self.stack.append([None] * size)
 
-        elif op == 'aload':
+        elif op == 'arrayload':
             idx = self.stack.pop()
-            arr = self.stack.pop()
-            self.stack.append(arr[idx])
+            self.stack.append(self.variables[parts[1]][idx])
 
-        elif op == 'asave':
+        elif op == 'arraysave':
             val = self.stack.pop()
             idx = self.stack.pop()
-            arr = self.stack.pop()
-            arr[idx] = val
+            self.variables[parts[1]][idx] = val
             self.stack.append(val)
 
         elif op == 'open':
