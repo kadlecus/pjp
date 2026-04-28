@@ -13,6 +13,7 @@ stat
     | '{' stat* '}'                             # BlockStat
     | FOPEN ID filename=expr ';'                #FopenStat
     | IF '(' expr ')' stat (ELSE stat)?         # IfStat
+    | type ID '[' INT_LIT ']' ';'                   # ArrayDec
     | WHILE '(' expr ')' stat                   # WhileStat
     | expr ';'                                  # ExprStat
     ;
@@ -36,6 +37,8 @@ expr
     | expr '&&' expr                            # AndOp
     | expr '||' expr                            # OrOp
     | expr '<<' expr                            # WriteFile
+    | <assoc=right> ID '[' expr ']' '=' expr    # ArrayAss
+    | ID '[' expr ']'                           # ArrayAcc
     | <assoc=right> ID '=' expr                 # Assign
     | '(' expr ')'                              # Parens
     | FLOAT_LIT                                 # FloatLit

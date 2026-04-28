@@ -1,3 +1,5 @@
-file f;
-fopen f "vysledek.txt";
-f << "cde" << 1+6;
+int a[3];
+a[0] = 10;
+a[1] = 20;
+a[2] = 30;
+write a[0], a[1], a[2];

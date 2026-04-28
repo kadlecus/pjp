@@ -58,6 +58,10 @@ class CodeGenerator(ParseTreeVisitor):
         if isinstance(ctx, p.AddSubConcatContext):
             if ctx.op.text == '.': return 'string'
             return self._numeric_result(ctx.expr(0), ctx.expr(1))
+        if isinstance(ctx, p.ArrayAccContext):
+            return self.symbols[ctx.ID().getText()][1]
+        if isinstance(ctx, p.ArrayAssContext):
+            return self.symbols[ctx.ID().getText()][1]
         return None
 
     def _numeric_result(self, e1, e2):
@@ -151,6 +155,15 @@ class CodeGenerator(ParseTreeVisitor):
         self.emit(f'jmp {l1}')
         self.emit(f'label {l2}')
 
+    def visitArrayDec(self, ctx):
+        name = ctx.ID().getText()
+        elem_type = self._type_str(ctx.type_())
+        size = int(ctx.INT_LIT().getText())
+        self.symbols[name] = ('array', elem_type)
+        self.emit(f'push I {size}')
+        self.emit('create')
+        self.emit(f'save {name}')
+
     def visitFopenStat(self, ctx):
     
         self.visit(ctx.filename)
@@ -166,6 +179,19 @@ class CodeGenerator(ParseTreeVisitor):
     
 
     # ── Expressions ──────────────────────────────────────────────────────────
+
+    def visitArrayAcc(self, ctx):
+        name = ctx.ID().getText()
+        self.emit(f'load {name}')
+        self.visit(ctx.expr())
+        self.emit('aload')
+
+    def visitArrayAss(self, ctx):
+        name = ctx.ID().getText()
+        self.emit(f'load {name}')
+        self.visit(ctx.expr(0))
+        self.visit(ctx.expr(1))
+        self.emit('asave')
 
     def visitWriteFile(self, ctx):
         self.visit(ctx.expr(0))

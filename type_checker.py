@@ -111,6 +111,52 @@ class TypeChecker(ParseTreeVisitor):
         for expr in ctx.expr():
             self.visit(expr)
 
+    def visitArrayDec(self, ctx):
+        elem_type = ctx.type_().getText()
+        name = ctx.ID().getText() 
+
+        if name in self.symbols:
+            self.error(ctx, f"'{name}' already declared")
+
+        self.symbols[name] = ('array', elem_type)
+    
+    def visitArrayAcc(self, ctx):
+       name = ctx.ID().getText()
+
+       if name not in self.symbols:
+          self.error(ctx, f"'{name}' not declared")
+
+       s = self.symbols[name]
+
+       if s[0] != 'array':
+          self.error(ctx, f"'{name}' is not an array")
+
+       idx_type = self.visit(ctx.expr())
+       if idx_type != 'int':
+          self.error(ctx, f"array index must be int, got '{idx_type}'")
+
+       return s[1]
+
+    def visitArrayAss(self, ctx):                                                                                                             
+        name = ctx.ID().getText()
+
+        if name not in self.symbols:
+          self.error(ctx, f"'{name}' not declared")
+
+        s = self.symbols[name]
+
+        if s[0] != 'array':
+          self.error(ctx, f"'{name}' is not an array")
+
+        idx_type = self.visit(ctx.expr(0))
+        if idx_type != 'int':
+          self.error(ctx, f"array index must be int, got '{idx_type}'")
+
+        val_type = self.visit(ctx.expr(1))
+        if val_type != s[1]:
+          self.error(ctx, f"type mismatch: array is '{s[1]}', got '{val_type}'")
+
+        return s[1]
     # ── Expressions (return type string) ─────────────────────────────────────
 
     def visitWriteFile(self, ctx):

@@ -154,6 +154,22 @@ class Interpreter:
                 self.stack.append(line.strip() == 'true')
             elif T == 'S':
                 self.stack.append(line)
+        elif op == 'create':
+            size = self.stack.pop()
+            self.stack.append([None] * size)
+
+        elif op == 'aload':
+            idx = self.stack.pop()
+            arr = self.stack.pop()
+            self.stack.append(arr[idx])
+
+        elif op == 'asave':
+            val = self.stack.pop()
+            idx = self.stack.pop()
+            arr = self.stack.pop()
+            arr[idx] = val
+            self.stack.append(val)
+
         elif op == 'open':
             filename = self.stack.pop()
             self.file_counter += 1
